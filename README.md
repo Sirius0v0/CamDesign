@@ -1,3 +1,2 @@
-# CamDesign
+# ProgrammingTraining
 
-+ 编程环境：`matlab`
