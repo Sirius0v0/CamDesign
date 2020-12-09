@@ -12,7 +12,7 @@ W = 7000;       % 排气速度
 
 %% 初始状态
 theta_0 = pi/2;   % 初始弹道倾角 rad
-v_0 = 1e-19;        % 初始速度 m/s
+v_0 = 1e-9;        % 初始速度 m/s
 x_0 = 0;        % 初始水平位置 m
 y_0 = 0;        % 初始高度 m
 
@@ -25,13 +25,13 @@ ppr = @(t) (pi/2) * (t >= 0 && t < t1) +...
     ( pi/2 + (pi/2 - fig)*( ((t-t1)/(t2-t1))^2 - 2*(t-t1)/(t2-t1) ) ) * (t >= t1 && t < t2)+...
     fig * (t >= t2 && t <= t3);
 args = [dm,g,A_phi,Pe,m0];
-y0 = [v_0; theta_0; x_0; y_0];
+y0 = [theta_0; v_0; x_0; y_0];
 tspan = [0 t3];
 
 %% 求解
 [t,y] = ode45(@(t,y) odefcn(t,y,ppr,args), tspan, y0);
-V_fin = y(end,1);
-theta_fin = y(end,2);
+theta_fin = y(end,1);
+V_fin = y(end,2);
 x_fin = y(end,3);
 y_fin = y(end,4);
 
