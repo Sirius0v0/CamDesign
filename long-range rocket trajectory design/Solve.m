@@ -37,7 +37,7 @@ y_fin = y(end,4);
 
 %% 可视化
 figure(1)
-plot(t,y(:,1),'k','linewidth',1)
+plot(t,y(:,2),'k','linewidth',1)
 grid on
 title('速度v变化曲线')
 legend('速度v变化曲线','Location','best')
@@ -46,7 +46,7 @@ ylabel('火箭飞行速度(单位:m/s)')
 fprintf('主动段终点火箭飞行速度为 %.2f m/s\n',V_fin);
 
 figure(2)
-plot(t,rad2deg(y(:,2)),'k','linewidth',1)
+plot(t,rad2deg(y(:,1)),'k','linewidth',1)
 grid on
 title('弹道倾角 \theta 变化曲线')
 legend('弹道倾角 \theta 变化曲线','Location','best')
