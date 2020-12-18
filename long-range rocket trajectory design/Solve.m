@@ -15,6 +15,7 @@ theta_0 = pi/2;   % 初始弹道倾角 rad
 v_0 = 1e-9;        % 初始速度 m/s
 x_0 = 0;        % 初始水平位置 m
 y_0 = 0;        % 初始高度 m
+dv_1k_0 = 0;      % 引力损失 m/s
 
 %% 飞行程序角Phi_pr 及相关参数构造
 fig = pi/60;
@@ -25,7 +26,7 @@ ppr = @(t) (pi/2) * (t >= 0 && t < t1) +...
     ( pi/2 + (pi/2 - fig)*( ((t-t1)/(t2-t1))^2 - 2*(t-t1)/(t2-t1) ) ) * (t >= t1 && t < t2)+...
     fig * (t >= t2 && t <= t3);
 args = [dm,g,A_phi,Pe,m0];
-y0 = [theta_0; v_0; x_0; y_0];
+y0 = [theta_0; v_0; x_0; y_0; dv_1k_0];
 tspan = [0 t3];
 
 %% 求解
@@ -34,6 +35,7 @@ theta_fin = y(end,1);
 V_fin = y(end,2);
 x_fin = y(end,3);
 y_fin = y(end,4);
+DV_1k = y(end,5);
 
 %% 可视化
 figure(1)
@@ -66,6 +68,15 @@ fprintf('主动段终点火箭在地面发射坐标系下的坐标为(%.2f, %.2f)m\n',x_fin,y_fin);
 
 %% 第二问
 %% V_k = -V_r * ln(m_k/m_0)
+fprintf('验证齐奥尔科夫斯基公式相对误差:\n');
+% 齐奥尔科夫斯基理想速度计算
 m_k = m0 - dm * t3;
-error = (V_fin+W*log(m_k/m0))/ V_fin;
-fprintf('验证齐奥尔科夫斯基公式相对误差为: %.2f%%\n',error*100);
+V_ideal = -W*log(m_k/m0);
+% 考虑引力损失
+error1 = ( V_fin - V_ideal ) / V_ideal;
+fprintf('\t\t\t 考虑引力损失的相对误差为: %.3f%%\n',error1*100);
+
+% 无引力损失
+V_fin_ = V_fin + DV_1k;
+error2 = ( V_fin_ - V_ideal ) / V_ideal;
+fprintf('\t\t\t 无引力损失的相对误差为: %.3f%%\n',error2*100);
