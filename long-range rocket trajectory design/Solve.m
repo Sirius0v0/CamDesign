@@ -68,15 +68,16 @@ fprintf('主动段终点火箭在地面发射坐标系下的坐标为(%.2f, %.2f)m\n',x_fin,y_fin);
 
 %% 第二问
 %% V_k = -V_r * ln(m_k/m_0)
-fprintf('验证齐奥尔科夫斯基公式相对误差:\n');
+
 % 齐奥尔科夫斯基理想速度计算
 m_k = m0 - dm * t3;
 V_ideal = -W*log(m_k/m0);
+fprintf('验证齐奥尔科夫斯基公式相对误差:(终点理想速度%.3f m/s)\n',V_ideal);
 % 考虑引力损失
 error1 = ( V_fin - V_ideal ) / V_ideal;
-fprintf('\t\t\t 考虑引力损失的相对误差为: %.3f%%\n',error1*100);
+fprintf('\t\t\t 考虑引力损失终点速度为%.3f m/s \t相对误差为: %.3f%%\n',V_fin, error1*100);
 
 % 无引力损失
 V_fin_ = V_fin + DV_1k;
 error2 = ( V_fin_ - V_ideal ) / V_ideal;
-fprintf('\t\t\t 无引力损失的相对误差为: %.3f%%\n',error2*100);
+fprintf('\t\t\t 无引力损失终点速度为%.3f m/s \t相对误差为: %.3f%%\n',V_fin_, error2*100);
