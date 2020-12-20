@@ -5,31 +5,37 @@ clc
 sys_raw_open = tf([2 0.1],[1 0.1 4 0]);     % 原系统开环传递函数
 sys_raw_close = tf([2 0.1],[1 0.1 6 0.1]);  % 原系统闭环传递函数
 figure;step(sys_raw_close);   % 阶跃响应
+title('原系统单位阶跃响应曲线')
 figure;rlocus(sys_raw_open); % 根轨迹
+title('原系统根轨迹曲线')
 
-%% 确定校正网络零极点
+%% 确定校正网络零极点（平分线法）
 Y = [2*3^0.5 0 2*3^0.5];
 X = [-2 0 -5];
 S = [-2 2*3^.5];
+figure;
 [pingfen_x, pingfen_y] = draw_pingfen(X,Y);
 hold on
 rot(pingfen_x, pingfen_y, S, 18.33875);
 rot(pingfen_x, pingfen_y, S, -18.33875);
-plot(linspace(-7,-2,1000),zeros(1,1000));
+% 坐标轴
+plot(linspace(-7,1,1000), zeros(1,1000), 'k:');
+plot(zeros(1,1000), linspace(-1,5,1000), 'k:')
 hold off
-% z = -2.7157; p = -5.8939
+z = -2.7157; p = -5.8939;
 s = -2 + 2*3^.5*1i;   
-K_c = sqrt( abs(s+5.8939)^2 * abs(s^2+0.1*s+4)/...
-    (abs(2*s+0.1)*abs(s+2.7157)^2) );
-
+K_c = sqrt( abs(s-p)*abs(s-p) * abs(s^3+0.1*s^2+4*s)/...
+    (abs(2*s+0.1)*abs(s-z)*abs(s-z)) );
 
 %% 校正后系统根轨迹及单位阶跃响应曲线
-numerator = K_c^2 * conv([1 2.7157], conv([2 0.1],[1 2.7157]));
-denominator = conv([1 0.1 4], conv([1 5.8939],[1 5.8939]));
+numerator = K_c^2 * conv([1 -z], conv([2 0.1],[1 -z]));
+denominator = conv([1 0.1 4 0], conv([1 -p],[1 -p]));
 sys_cor_open = tf(numerator, denominator);
-sys_cor_close = tf(numerator,[0,numerator]+denominator);  % 原系统闭环传递函数
+sys_cor_close = tf(numerator,[0,0,numerator]+denominator);  % 原系统闭环传递函数
 figure;step(sys_cor_close);   % 阶跃响应
+title('原系统单位阶跃响应曲线')
 figure;rlocus(sys_cor_open); % 根轨迹
+title('原系统根轨迹曲线')
 
 %% 附加功能函数部分
 function [line_x, line_y] = draw_pingfen(X,Y)
