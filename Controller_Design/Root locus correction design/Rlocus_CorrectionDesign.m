@@ -19,7 +19,7 @@ hold on
 rot(pingfen_x, pingfen_y, S, 18.33875);
 rot(pingfen_x, pingfen_y, S, -18.33875);
 % 坐标轴
-plot(linspace(-7,1,1000), zeros(1,1000), 'k:');
+plot(linspace(-7,1,80000), zeros(1,80000), 'k:');
 plot(zeros(1,1000), linspace(-1,5,1000), 'k:')
 hold off
 z = -2.7157; p = -5.8939;
@@ -33,9 +33,9 @@ denominator = conv([1 0.1 4 0], conv([1 -p],[1 -p]));
 sys_cor_open = tf(numerator, denominator);
 sys_cor_close = tf(numerator,[0,0,numerator]+denominator);  % 原系统闭环传递函数
 figure;step(sys_cor_close);   % 阶跃响应
-title('原系统单位阶跃响应曲线')
+title('校正后系统单位阶跃响应曲线')
 figure;rlocus(sys_cor_open); % 根轨迹
-title('原系统根轨迹曲线')
+title('校正后系统根轨迹曲线')
 
 %% 附加功能函数部分
 function [line_x, line_y] = draw_pingfen(X,Y)
