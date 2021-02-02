@@ -61,111 +61,147 @@ g = 9.8;                            % 重力加速度
 r0 = ( (y_target0 - y0)^2 + (x_target0 - x0)^2 )^.5;    % 弹目距离
 %% 弹道偏差
 
-%% 求解
-% 初始值
-y_initial = [v0, theta0, omega_z0, vartheta0, x0, y0, m0, x_target0,y_target0, q0,0,r0]';% 第(end-1)是导引律下的弹道倾角，初始值为0
-t_step = 0.0005;                     % 步长
-tspan = [0, 10];                     % 积分范围
-t = tspan(1):t_step:tspan(2);       % 离散化数据
-% 可调参数
-Kp = 0.8;                        % 舵偏比例系数
-Kd = 3.027;                    % 舵偏微分系数
+%%%%%%%%%%%%%%%%%% ↓ 可调参数 ↓ %%%%%%%%%%%%%%%%%%%%%%
+Kp = 0.8;                           % 舵偏比例系数
+Kd = 3.027;                         % 舵偏微分系数
 % Kp = 88.9;                        % 舵偏比例系数
-% Kd = 107.027;                    % 舵偏微分系数
-RANGE = 1;                      % 打靶误差   
+% Kd = 107.027;                     % 舵偏微分系数
+RANGE = 1;                          % 打靶误差   
+isDaba = 1;                         % 是否打靶仿真
+num_simulation = 3e2;               % 仿真次数
+%%%%%%%%%%%%%%%%%% ↑ 开放接口 ↑ %%%%%%%%%%%%%%%%%%%%%%
 
-y = ones(1,length(t));
-y = y_initial * y;            % 预分配内存 提高运行速度
-d_theta_xing_dian = 0;
-d_theta_dian = 0;             % 弹道倾角速度的初值（不定义在求解参数中，节省内存）
-stop = length(t);             % 记录拦截节点  
-for i = 2:length(t)
-% y = [1弹体速度，2弹道倾角，3俯仰角速度，4俯仰角，5导弹横坐标，6导弹纵坐标，7质量，8目标横坐标,9目标纵坐标，10视线角微分项,11导引弹道倾角，12弹目距离]
-
-% 参数预备
-alpha = y(4,i-1) - y(2,i-1);                % 攻角
-% 修正至允许攻角范围
-if (alpha > ALPHA_MAX)
-    alpha = ALPHA_MAX;
-elseif (alpha < ALPHA_MIN)
-    alpha = ALPHA_MIN;
+delta_m = 100;          % 质量偏差；
+delta_Cy = 0.15;        % 升力系数偏差
+delta_Cx = 0.15;        % 阻力系数偏差
+% delta_q = rad2deg(0.1);
+Done = 0;               % 记录命中次数
+if isDaba   
+    all_m0 = normrnd(m0,delta_m/3,1,num_simulation);      % 产生质量偏差
+    all_m0(all_m0 > (m0+delta_m) | all_m0 < (m0-delta_m)) = m0;   %可以将极少数超出范围的质量偏差置于均值做近似处理
+    
+%     all_m0 = ones(1,num_simulation) * m0;
+else
+    all_m0 = m0;
 end
-delta_theta = y(2,i-1) - y(11,i-1);         % 弹道倾角误差
-delta_z = Kp * delta_theta + Kd * (d_theta_dian - d_theta_xing_dian);
-% 修正至最大偏转角度
-if (delta_z > DELTA_Z_MAX)
-    delta_z = DELTA_Z_MAX;
-elseif (delta_z < DELTA_Z_MIN)
-    delta_z = DELTA_Z_MIN;
-end
-X = cal_X(alpha,y(6,i-1),y(1,i-1));
-Y = cal_Y(alpha,delta_z,y(6,i-1),y(1,i-1));
-Mz = cal_Mz(alpha,delta_z,y(3,i-1),y(6,i-1),y(1,i-1));
 
-y(1,i) = y(1,i-1) + ( ( P * cosd(alpha) - X )/y(7,i-1) - g * sind(y(2,i-1)) ) * t_step;
-y(2,i) = y(2,i-1) + ( ( P * sind(alpha) + Y )/y(7,i-1)/y(1,i-1) - g * cosd(y(2,i-1))/y(1,i-1) ) * t_step;
-y(3,i) = y(3,i-1) + rad2deg( ( Mz / Jz ) * t_step );
-y(4,i) = y(4,i-1) + ( y(3,i-1) ) * t_step;
-y(5,i) = y(5,i-1) + ( y(1,i-1) * cosd(y(2,i-1)) ) * t_step;
-y(6,i) = y(6,i-1) + ( y(1,i-1) * sind(y(2,i-1)) ) * t_step;
-y(7,i) = y(7,i-1) + ( -dmdt ) * t_step;
-y(8,i) = y(8,i-1) + ( -v_target0 ) * t_step;
-y(9,i) = y(9,i-1) + 0;
-y(10,i) = (cal_deg(y(5,i),y(6,i),y(8,i),y(9,i)) - cal_deg(y(5,i-1),y(6,i-1),y(8,i-1),y(9,i-1)) )/t_step;
-y(11,i) = y(11,i-1) + K * y(10,i) * t_step;
-y(12,i) = ( (y(8,i) - y(5,i))^2 + (y(9,i) - y(6,i))^2 )^.5;
+%% 求解
+for m0 = all_m0
 
-d_theta_dian = ( y(2,i) - y(2,i-1) )/t_step;
-d_theta_xing_dian = ( y(11,i) - y(11,i-1) )/t_step;
+    % 初始值
+    y_initial = [v0, theta0, omega_z0, vartheta0, x0, y0, m0, x_target0,y_target0, q0,0,r0]';% 第(end-1)是导引律下的弹道倾角，初始值为0
+    t_step = 0.0005;                     % 步长
+    tspan = [0, 10];                     % 积分范围
+    t = tspan(1):t_step:tspan(2);       % 离散化数据
 
-if (stop == length(t))      % 当尚未记录停止位置时进入
-    if ( y(12,i) < RANGE )
-        stop = i;           % 记录停止位置
+    y = ones(1,length(t));
+    y = y_initial * y;            % 预分配内存 提高运行速度
+    d_theta_xing_dian = 0;
+    d_theta_dian = 0;             % 弹道倾角速度的初值（不定义在求解参数中，节省内存）
+    stop = length(t);             % 记录拦截节点  
+    for i = 2:length(t)
+    % y = [1弹体速度，2弹道倾角，3俯仰角速度，4俯仰角，5导弹横坐标，6导弹纵坐标，7质量，8目标横坐标,9目标纵坐标，10视线角微分项,11导引弹道倾角，12弹目距离]
+
+    % 参数预备
+    alpha = y(4,i-1) - y(2,i-1);                % 攻角
+    % 修正至允许攻角范围
+    if (alpha > ALPHA_MAX)
+        alpha = ALPHA_MAX;
+    elseif (alpha < ALPHA_MIN)
+        alpha = ALPHA_MIN;
     end
-end
+    delta_theta = y(2,i-1) - y(11,i-1);         % 弹道倾角误差
+    delta_z = Kp * delta_theta + Kd * (d_theta_dian - d_theta_xing_dian);
+    % 修正至最大偏转角度
+    if (delta_z > DELTA_Z_MAX)
+        delta_z = DELTA_Z_MAX;
+    elseif (delta_z < DELTA_Z_MIN)
+        delta_z = DELTA_Z_MIN;
+    end
+    Cx = cal_Cx(alpha);
+    Cy = cal_Cy(alpha,delta_z,y(6,i-1),y(1,i-1));
+%     if isDaba
+%         Cx = normrnd(Cx,delta_Cx/3);
+%         Cy = normrnd(Cy,delta_Cy/3);
+%     end
+    X = Cx * cal_qS(y(6,i-1),y(1,i-1));
+    Y = Cy * cal_qS(y(6,i-1),y(1,i-1));
+    Mz = cal_Mz(alpha,delta_z,y(3,i-1),y(6,i-1),y(1,i-1));
+
+    y(1,i) = y(1,i-1) + ( ( P * cosd(alpha) - X )/y(7,i-1) - g * sind(y(2,i-1)) ) * t_step;
+    y(2,i) = y(2,i-1) + ( ( P * sind(alpha) + Y )/y(7,i-1)/y(1,i-1) - g * cosd(y(2,i-1))/y(1,i-1) ) * t_step;
+    y(3,i) = y(3,i-1) + rad2deg( ( Mz / Jz ) * t_step );
+    y(4,i) = y(4,i-1) + ( y(3,i-1) ) * t_step;
+    y(5,i) = y(5,i-1) + ( y(1,i-1) * cosd(y(2,i-1)) ) * t_step;
+    y(6,i) = y(6,i-1) + ( y(1,i-1) * sind(y(2,i-1)) ) * t_step;
+    y(7,i) = y(7,i-1) + ( -dmdt ) * t_step;
+    y(8,i) = y(8,i-1) + ( -v_target0 ) * t_step;
+    y(9,i) = y(9,i-1) + 0;
+    y(10,i) = (cal_deg(y(5,i),y(6,i),y(8,i),y(9,i)) - cal_deg(y(5,i-1),y(6,i-1),y(8,i-1),y(9,i-1)) )/t_step;
+    y(11,i) = y(11,i-1) + K * y(10,i) * t_step;
+    y(12,i) = ( (y(8,i) - y(5,i))^2 + (y(9,i) - y(6,i))^2 )^.5;
+
+    d_theta_dian = ( y(2,i) - y(2,i-1) )/t_step;
+    d_theta_xing_dian = ( y(11,i) - y(11,i-1) )/t_step;
+
+    if (stop == length(t))      % 当尚未记录停止位置时进入
+        if ( y(12,i) < RANGE )
+            stop = i;           % 记录停止位置
+        end
+    end
+
+    end
+
+    if isDaba
+        if (min(y(12,:)) < RANGE)
+            Done = Done+1;          % 记录命中次数
+        end
+    else
+        % 信息输出
+        if (min(y(12,:)) < RANGE)
+            fprintf('已成功拦截目标！拦截位置(%.3f , %.3f)m\n',y(8,stop),y(9,stop));
+        end
+        fprintf('距离目标最近%.4fm\n',min(y(12,1:stop)))
+    end
 
 end
-
-% 信息输出
-if (min(y(12,:)) < RANGE)
-    fprintf('已成功拦截目标！拦截位置(%.3f , %.3f)m\n',y(8,stop),y(9,stop));
-end
-fprintf('距离目标最近%.4fm\n',min(y(12,1:stop)))
 %% 可视化
-figure('Name','导弹拦截飞行轨道')
-hold on
-plot(y(5,1:stop),y(6,1:stop))
-plot(y(8,1:stop),y(9,1:stop))
-hold off
-xlabel('水平位置 x');
-ylabel('竖直位置 y');
-title('导弹拦截飞行轨道');
+if ~isDaba
+    figure('Name','导弹拦截飞行轨道')
+    hold on
+    plot(y(5,1:stop),y(6,1:stop))
+    plot(y(8,1:stop),y(9,1:stop))
+    hold off
+    xlabel('水平位置 x');
+    ylabel('竖直位置 y');
+    title('导弹拦截飞行轨道');
 
-figure('Name','速度随时间变化图')
-plot(t(1:stop),y(1,1:stop))
-xlabel('时间 t');
-ylabel('导弹速度');
-title('速度随时间变化图');
+    figure('Name','速度随时间变化图')
+    plot(t(1:stop),y(1,1:stop))
+    xlabel('时间 t');
+    ylabel('导弹速度');
+    title('速度随时间变化图');
 
-figure('Name','导弹与目标间距随时间变化图')
-plot(t(1:stop),y(12,1:stop));
-xlabel('时间 t');
-ylabel('导弹与目标间距');
-title('导弹与目标间距随时间变化图');
+    figure('Name','导弹与目标间距随时间变化图')
+    plot(t(1:stop),y(12,1:stop));
+    xlabel('时间 t');
+    ylabel('导弹与目标间距');
+    title('导弹与目标间距随时间变化图');
 
-figure('Name','弹道倾角随时间变化图')
-plot(t(1:stop),y(2,1:stop));
-xlabel('时间 t');
-ylabel('弹道倾角');
-title('弹道倾角随时间变化图');
+    figure('Name','弹道倾角随时间变化图')
+    plot(t(1:stop),y(2,1:stop));
+    xlabel('时间 t');
+    ylabel('弹道倾角');
+    title('弹道倾角随时间变化图');
 
-figure('Name','攻角随时间变化图')
-plot(t(1:stop-0.5/t_step),y(4,1:stop-0.5/t_step)-y(2,1:stop-0.5/t_step));
-xlabel('时间 t');
-ylabel('攻角');
-title('攻角随时间变化图');
-
-
+    figure('Name','攻角随时间变化图')
+    plot(t(1:stop-0.5/t_step),y(4,1:stop-0.5/t_step)-y(2,1:stop-0.5/t_step));
+    xlabel('时间 t');
+    ylabel('攻角');
+    title('攻角随时间变化图');
+else
+    fprintf('打靶命中率：%.2f%%\n',100*Done/num_simulation);
+end
 
 %% GIF显示拦截过程
 isGenerate = 0;             % 绘制GIF动画开关，1为开，0为关
