@@ -24,26 +24,26 @@ alpha0 = 1.5;           % 初始攻角(deg)
 theta0 = 26;            % 初始弹道倾角(deg)
 
 % 相关数值计算
-xt0 = (Dmt0^2 - (yt-y0)^2)^0.5;     % 目标初始x位置
+xt0 = x0 + (Dmt0^2 - (yt-y0)^2)^0.5;     % 目标初始x位置
 q0 = cal_deg(x0,y0,xt0,yt);         % 初始航向角
 
 %%
 args = [Isp,TWratio,wingloading,vt,yt,g,q0];
 %% 龙格库塔求解
-h = 0.01;           % 步长
-velocity = [v0];      % 速度求解
-theta = [theta0];         % theta求解
-Y = [y0];
-X = [x0];
+h = 0.001;           % 步长
+velocity = v0;      % 速度求解
+theta = theta0;         % theta求解
+Y = y0;
+X = x0;
 mu = [];
-alpha = [alpha0];
+alpha = alpha0;
+q_ = q0;
 % 开始迭代
 i = 1;
-q = cal_deg(0,0,X(i),Y(i));
+q = cal_deg(0,4,X(i),Y(i));
 mu(i) = getmu(q0,q);
-while (i<500)
+while ( (Y(i)<yt) )
 
-    
     % K1 = f(x,y)
     K11 = getdv(velocity(i),theta(i),Y(i),mu(i),alpha(i));
     K21 = getdtheta(velocity(i),theta(i),Y(i),mu(i),alpha(i),q0);
@@ -73,8 +73,12 @@ while (i<500)
     theta(i+1) = theta(i) + h/6*(K21+2*K22+2*K23+K24);
     X(i+1) = X(i) + h/6*(K31+2*K32+2*K33+K34);
     Y(i+1) = Y(i) + h/6*(K41+2*K42+2*K43+K44);
-    q = cal_deg(0,0,X(i+1),Y(i+1));
+    q = cal_deg(0,4,X(i+1),Y(i+1));
+    q_(i+1) = q;
     mu(i+1) = getmu(q0,q);
     alpha(i+1) = getalpha(velocity(i+1),theta(i+1),Y(i+1),mu(i+1),alpha(i),q0);
     i = i+1;
 end
+mu = mu(1):h:(mu(1)+h*(i-1));
+time = mu * Isp / g / TWratio;  % 时间
+

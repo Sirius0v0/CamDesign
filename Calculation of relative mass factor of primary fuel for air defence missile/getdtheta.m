@@ -8,7 +8,7 @@ g = 9.801;
 TWratio = 2.2;
 
 num = vt/yt*(Is/TWratio/g+1/v^2/sind(theta)*(v*getdy(v,theta)-y*getdv(v,theta,y,mu,alpha)));
-den = 1+(1/tand(q0)-mu*Is*vt/TWratio/g/yt)/tand(theta);
+den = 1+(cotd(q0)-mu*Is*vt/TWratio/g/yt)*cotd(theta);
 dtheta = num/den;
 end
 
