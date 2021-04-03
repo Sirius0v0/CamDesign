@@ -1,5 +1,6 @@
-function dv = getdv(v,theta,y,mu,alpha)
+function dv = getdv(v,theta,y,x,alpha,q0)
 % dv = getdv(v,theta,y,mu,alpha)
+mu = getmu(q0,x,y);
 Is = 2156;  
 TWratio = 2.2;
 wingloading = 5880; 

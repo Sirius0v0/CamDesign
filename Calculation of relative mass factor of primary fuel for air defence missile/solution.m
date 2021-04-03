@@ -30,41 +30,41 @@ q0 = cal_deg(x0,y0,xt0,yt);         % 初始航向角
 %%
 args = [Isp,TWratio,wingloading,vt,yt,g,q0];
 %% 龙格库塔求解
-h = 0.001;           % 步长
+h = 0.0001;           % 步长
 velocity = v0;      % 速度求解
 theta = theta0;         % theta求解
 Y = y0;
 X = x0;
-mu = [];
+i = 1;
+mu = 0;
+%mu = getmu(q0,X(i),Y(i));
 alpha = alpha0;
 q_ = q0;
+
 % 开始迭代
-i = 1;
-q = cal_deg(0,4,X(i),Y(i));
-mu(i) = getmu(q0,q);
 while ( (Y(i)<yt) )
 
     % K1 = f(x,y)
-    K11 = getdv(velocity(i),theta(i),Y(i),mu(i),alpha(i));
-    K21 = getdtheta(velocity(i),theta(i),Y(i),mu(i),alpha(i),q0);
+    K11 = getdv(velocity(i),theta(i),Y(i),X(i),alpha(i),q0);
+    K21 = getdtheta(velocity(i),theta(i),Y(i),X(i),alpha(i),q0);
     K31 = getdy(velocity(i),theta(i));
     K41 = getdx(velocity(i),theta(i));
     
     % K2 = f(x+h/2,y+h*K1/2)
-    K12 = getdv(velocity(i)+h*K11/2,theta(i)+h*K21/2,Y(i)+h*K31/2,mu(i)+h/2,alpha(i));
-    K22 = getdtheta(velocity(i)+h*K11/2,theta(i)+h*K21/2,Y(i)+h*K31/2,mu(i)+h/2,alpha(i),q0);
+    K12 = getdv(velocity(i)+h*K11/2,theta(i)+h*K21/2,Y(i)+h*K31/2,X(i)+h*K41/2,alpha(i),q0);
+    K22 = getdtheta(velocity(i)+h*K11/2,theta(i)+h*K21/2,Y(i)+h*K31/2,X(i)+h*K41/2,alpha(i),q0);
     K32 = getdy(velocity(i)+h*K11/2,theta(i)+h*K21/2);
     K42 = getdx(velocity(i)+h*K11/2,theta(i)+h*K21/2);
     
     % K3 = f(x+h/2,y+h*K2/2)
-    K13 = getdv(velocity(i)+h*K12/2,theta(i)+h*K22/2,Y(i)+h*K32/2,mu(i)+h/2,alpha(i));
-    K23 = getdtheta(velocity(i)+h*K12/2,theta(i)+h*K22/2,Y(i)+h*K32/2,mu(i)+h/2,alpha(i),q0);
+    K13 = getdv(velocity(i)+h*K12/2,theta(i)+h*K22/2,Y(i)+h*K32/2,X(i)+h*K42/2,alpha(i),q0);
+    K23 = getdtheta(velocity(i)+h*K12/2,theta(i)+h*K22/2,Y(i)+h*K32/2,X(i)+h*K42/2,alpha(i),q0);
     K33 = getdy(velocity(i)+h*K12/2,theta(i)+h*K22/2);
     K43 = getdx(velocity(i)+h*K12/2,theta(i)+h*K22/2);
     
     % K4 = f(x+h,y+h*K3)
-    K14 = getdv(velocity(i)+h*K13,theta(i)+h*K23,Y(i)+h*K33,mu(i)+h,alpha(i));
-    K24 = getdtheta(velocity(i)+h*K13,theta(i)+h*K23,Y(i)+h*K33,mu(i)+h,alpha(i),q0);
+    K14 = getdv(velocity(i)+h*K13,theta(i)+h*K23,Y(i)+h*K33,X(i)+h*K43,alpha(i),q0);
+    K24 = getdtheta(velocity(i)+h*K13,theta(i)+h*K23,Y(i)+h*K33,X(i)+h*K43,alpha(i),q0);
     K34 = getdy(velocity(i)+h*K13,theta(i)+h*K23);
     K44 = getdx(velocity(i)+h*K13,theta(i)+h*K23);
     
@@ -75,8 +75,7 @@ while ( (Y(i)<yt) )
     Y(i+1) = Y(i) + h/6*(K41+2*K42+2*K43+K44);
     q = cal_deg(0,4,X(i+1),Y(i+1));
     q_(i+1) = q;
-    mu(i+1) = getmu(q0,q);
-    alpha(i+1) = getalpha(velocity(i+1),theta(i+1),Y(i+1),mu(i+1),alpha(i),q0);
+    alpha(i+1) = getalpha(velocity(i+1),theta(i+1),Y(i+1),X(i+1),alpha(i),q0);
     i = i+1;
 end
 mu = mu(1):h:(mu(1)+h*(i-1));

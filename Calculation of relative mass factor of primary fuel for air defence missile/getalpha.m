@@ -1,7 +1,6 @@
-function alpha_ = getalpha(v,theta,y,mu,alpha,q0)
+function alpha_ = getalpha(v,theta,y,x,alpha,q0)
 % 
-vt = 420;
-yt = 15e3;
+mu = getmu(q0,x,y);
 Is = 2156;
 g = 9.801;
 TWratio = 2.2;
