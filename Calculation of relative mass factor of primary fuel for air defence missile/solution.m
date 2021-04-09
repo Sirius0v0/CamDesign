@@ -30,54 +30,86 @@ q0 = cal_deg(x0,y0,xt0,yt);         % 初始航向角
 %%
 args = [Isp,TWratio,wingloading,vt,yt,g,q0];
 %% 龙格库塔求解
-h = 0.0001;           % 步长
+h = 0.001;           % 步长
 velocity = v0;      % 速度求解
 theta = theta0;         % theta求解
 Y = y0;
 X = x0;
 i = 1;
 mu = 0;
+time = 0;
 %mu = getmu(q0,X(i),Y(i));
 alpha = alpha0;
 q_ = q0;
 
 % 开始迭代
 while ( (Y(i)<yt) )
-
-    % K1 = f(x,y)
-    K11 = getdv(velocity(i),theta(i),Y(i),X(i),alpha(i),q0);
-    K21 = getdtheta(velocity(i),theta(i),Y(i),X(i),alpha(i),q0);
-    K31 = getdy(velocity(i),theta(i));
-    K41 = getdx(velocity(i),theta(i));
-    
-    % K2 = f(x+h/2,y+h*K1/2)
-    K12 = getdv(velocity(i)+h*K11/2,theta(i)+h*K21/2,Y(i)+h*K31/2,X(i)+h*K41/2,alpha(i),q0);
-    K22 = getdtheta(velocity(i)+h*K11/2,theta(i)+h*K21/2,Y(i)+h*K31/2,X(i)+h*K41/2,alpha(i),q0);
-    K32 = getdy(velocity(i)+h*K11/2,theta(i)+h*K21/2);
-    K42 = getdx(velocity(i)+h*K11/2,theta(i)+h*K21/2);
-    
-    % K3 = f(x+h/2,y+h*K2/2)
-    K13 = getdv(velocity(i)+h*K12/2,theta(i)+h*K22/2,Y(i)+h*K32/2,X(i)+h*K42/2,alpha(i),q0);
-    K23 = getdtheta(velocity(i)+h*K12/2,theta(i)+h*K22/2,Y(i)+h*K32/2,X(i)+h*K42/2,alpha(i),q0);
-    K33 = getdy(velocity(i)+h*K12/2,theta(i)+h*K22/2);
-    K43 = getdx(velocity(i)+h*K12/2,theta(i)+h*K22/2);
-    
-    % K4 = f(x+h,y+h*K3)
-    K14 = getdv(velocity(i)+h*K13,theta(i)+h*K23,Y(i)+h*K33,X(i)+h*K43,alpha(i),q0);
-    K24 = getdtheta(velocity(i)+h*K13,theta(i)+h*K23,Y(i)+h*K33,X(i)+h*K43,alpha(i),q0);
-    K34 = getdy(velocity(i)+h*K13,theta(i)+h*K23);
-    K44 = getdx(velocity(i)+h*K13,theta(i)+h*K23);
-    
-    % y_n+1 = y_n + h/6*(K1+2*K2+2*K3+K4)
+    current_mu = mu(i);
+    % v
+    K11 = getdv(velocity(i),theta(i),Y(i),X(i),alpha(i),q0,current_mu);
+    K12 = getdv(velocity(i)+h*K11/2,theta(i),Y(i),X(i),alpha(i),q0,current_mu);
+    K13 = getdv(velocity(i)+h*K12/2,theta(i),Y(i),X(i),alpha(i),q0,current_mu);
+    K14 = getdv(velocity(i)+h*K13,theta(i),Y(i),X(i),alpha(i),q0,current_mu);
     velocity(i+1) = velocity(i) + h/6*(K11+2*K12+2*K13+K14);
-    theta(i+1) = theta(i) + h/6*(K21+2*K22+2*K23+K24);
-    X(i+1) = X(i) + h/6*(K31+2*K32+2*K33+K34);
-    Y(i+1) = Y(i) + h/6*(K41+2*K42+2*K43+K44);
-    q = cal_deg(0,4,X(i+1),Y(i+1));
+    
+    % theta
+    K21 = getdtheta(velocity(i),theta(i),Y(i),X(i),alpha(i),q0,[getdy(velocity(i),theta(i)),K11],current_mu);
+    K22 = getdtheta(velocity(i),theta(i)+h*K21/2,Y(i),X(i),alpha(i),q0,[getdy(velocity(i),theta(i)+h*K21/2),K11],current_mu);
+    K23 = getdtheta(velocity(i),theta(i)+h*K22/2,Y(i),X(i),alpha(i),q0,[getdy(velocity(i),theta(i)+h*K22/2),K11],current_mu);
+    K24 = getdtheta(velocity(i) ,theta(i)+h*K23,Y(i),X(i),alpha(i),q0,[getdy(velocity(i),theta(i)+h*K23),K11],current_mu);
+    theta(i+1) = theta(i) + rad2deg(h/6*(K21+2*K22+2*K23+K24));
+    
+    % x & y
+    X(i+1) = X(i) + h * getdx(velocity(i),theta(i));
+    Y(i+1) = Y(i) + h * getdy(velocity(i),theta(i));
+    
+    % q
+    q = acotd(cotd(q0) - current_mu*Isp*vt/yt/g/TWratio);
     q_(i+1) = q;
-    alpha(i+1) = getalpha(velocity(i+1),theta(i+1),Y(i+1),X(i+1),alpha(i),q0);
+%     alpha(i+1) = getalpha(velocity(i+1),theta(i+1),Y(i+1),X(i+1),alpha(i),q0,K21,current_mu);
+    alpha(i+1) = Stef(velocity(i),theta(i),Y(i),X(i),alpha(i),q0,K21,current_mu);
+%     alpha(i+1)
     i = i+1;
+    mu = [mu,mu(end)+h];
+    time = [time,mu(end) * Isp / g / TWratio];      % 时间
 end
-mu = mu(1):h:(mu(1)+h*(i-1));
-time = mu * Isp / g / TWratio;  % 时间
 
+%% 可视化
+fprintf('导弹主级燃料相对质量因数:%g\n',mu(end));
+figure(1)       % 导弹主级和目标运动轨迹
+yt = ones(1,length(mu)) * yt;
+xt = cotd(q_) .* yt;
+plot(X,Y,'b',xt,yt,'r');
+title('弹目运动轨迹示意图');
+grid on
+xlabel('x/m');
+ylabel('y/m');
+legend('导弹主级','目标','Location','best');
+
+figure(2)               % 绘制V(t)曲线
+plot(time,velocity);
+title('主级火箭速度随时间变化曲线');
+grid on
+ylabel('V/单位：m/s');
+xlabel('t/单位：s');
+
+figure(3)               % 绘制theta(t)曲线
+plot(time,theta);
+title('主级火箭theta随时间变化曲线');
+grid on
+ylabel('theta/单位：degree');
+xlabel('t/单位：s');
+
+figure(4)               % 绘制alpha(t)曲线
+plot(time,alpha);
+title('主级火箭alpha随时间变化曲线');
+grid on
+ylabel('alpha/单位：degree');
+xlabel('t/单位：s');
+
+figure(5)               % 绘制q(t)曲线
+plot(time,q_);
+title('主级火箭q随时间变化曲线');
+grid on
+ylabel('q/单位：degree');
+xlabel('t/单位：s');
